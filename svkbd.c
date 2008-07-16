@@ -1,29 +1,7 @@
 /* See LICENSE file for copyright and license details.
  *
- * dynamic window manager is designed like any other X client as well. It is
- * driven through handling X events. In contrast to other X clients, a window
- * manager selects for SubstructureRedirectMask on the root window, to receive
- * events about window (dis-)appearance.  Only one X connection at a time is
- * allowed to select for this event mask.
- *
- * Calls to fetch an X event from the event queue are blocking.  Due reading
- * status text from standard input, a select()-driven main loop has been
- * implemented which selects for reads on the X connection and STDIN_FILENO to
- * handle all data smoothly. The event handlers of dwm are organized in an
- * array which is accessed whenever a new event has been fetched. This allows
- * event dispatching in O(1) time.
- *
- * Each child of the root window is called a client, except windows which have
- * set the override_redirect flag.  Clients are organized in a global
- * doubly-linked client list, the focus history is remembered through a global
- * stack list. Each client contains a bit array to indicate the tags of a
- * client.
- *
- * Keys and tagging rules are organized as arrays and defined in config.h.
- *
- * To understand everything else, start reading main().
+ * To understand svkbd, start reading main().
  */
-#include <errno.h>
 #include <locale.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -32,20 +10,13 @@
 #include <X11/keysym.h>
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
-#include <X11/Xproto.h>
 #include <X11/Xutil.h>
+#include <X11/Xproto.h>
 #include <X11/extensions/XTest.h>
 
 /* macros */
 #define MAX(a, b)       ((a) > (b) ? (a) : (b))
-#define MIN(a, b)       ((a) < (b) ? (a) : (b))
-#define BUTTONMASK      (ButtonPressMask|ButtonReleaseMask)
-#define CLEANMASK(mask) (mask & ~(numlockmask|LockMask))
 #define LENGTH(x)       (sizeof x / sizeof x[0])
-#define MAXMOD          16
-#define MOUSEMASK       (BUTTONMASK|PointerMotionMask)
-#define TAGMASK         ((int)((1LL << LENGTH(tags)) - 1))
-#define TEXTW(x)        (textnw(x, strlen(x)) + dc.font.height)
 
 /* enums */
 enum { ColFG, ColBG, ColLast };
@@ -77,12 +48,17 @@ typedef struct {
 	Bool pressed;
 } Key;
 
+typedef struct {
+	KeySym mod;
+	uint button;
+} Buttonmod;
+
 /* function declarations */
 static void buttonpress(XEvent *e);
 static void buttonrelease(XEvent *e);
 static void cleanup(void);
 static void configurenotify(XEvent *e);
-static void destroynotify(XEvent *e);
+static void unmapnotify(XEvent *e);
 static void die(const char *errstr, ...);
 static void drawkeyboard(void);
 static void drawkey(Key *k);
@@ -92,9 +68,11 @@ static ulong getcolor(const char *colstr);
 static void initfont(const char *fontstr);
 static void leavenotify(XEvent *e);
 static void motionnotify(XEvent *e);
+static void press(Key *k, KeySym mod);
 static void run(void);
 static void setup(void);
 static int textnw(const char *text, uint len);
+static void unpress();
 static void updatekeys();
 
 /* variables */
@@ -104,7 +82,7 @@ static void (*handler[LASTEvent]) (XEvent *) = {
 	[ButtonPress] = buttonpress,
 	[ButtonRelease] = buttonrelease,
 	[ConfigureNotify] = configurenotify,
-	[DestroyNotify] = destroynotify,
+	[UnmapNotify] = unmapnotify,
 	[Expose] = expose,
 	[LeaveNotify] = leavenotify,
 	[MotionNotify] = motionnotify,
@@ -113,57 +91,34 @@ static Display *dpy;
 static DC dc;
 static Window root, win;
 static Bool running = True;
-static Key *hover = NULL, *pressed = NULL;
+static Key *hover = NULL;
+static KeySym pressedmod = 0;
 /* configuration, allows nested code to access above variables */
 #include "config.h"
 
 void
 buttonpress(XEvent *e) {
+	int i;
 	XButtonPressedEvent *ev = &e->xbutton;
 	Key *k;
+	KeySym mod = 0;
 
-	if((k = findkey(ev->x, ev->y))) {
-		if(k->pressed && IsModifierKey(k->keysym)) {
-			XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, k->keysym), False, 0);
-			k->pressed = 0;
-			pressed = NULL;
+	for(i = 0; i < LENGTH(buttonmods); i++)
+		if(ev->button == buttonmods[i].button) {
+			mod = buttonmods[i].mod;
+			break;
 		}
-		else {
-			pressed = k;
-			k->pressed = True;
-			XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, k->keysym), True, 0);
-		}
-		drawkey(k);
-		XCopyArea(dpy, dc.drawable, win, dc.gc, 0, 0, ww, wh, 0, 0);
-	}
+	if((k = findkey(ev->x, ev->y)))
+		press(k, mod);
 }
 
 void
 buttonrelease(XEvent *e) {
-	int i;
 	XButtonPressedEvent *ev = &e->xbutton;
-	Key *k = findkey(ev->x, ev->y);
+	Key *k;
 
-	if(pressed && k && !IsModifierKey(k->keysym)) {
-		if(k != pressed) {
-			XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, k->keysym), True, 0);
-			k->pressed = 1;
-		}
-		for(i = 0; i < LENGTH(keys); i++) {
-			if(keys[i].pressed && !IsModifierKey(keys[i].keysym)) {
-				XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, keys[i].keysym), False, 0);
-				keys[i].pressed = 0;
-			}
-		}
-		for(i = 0; i < LENGTH(keys); i++) {
-			if(keys[i].pressed) {
-				XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, keys[i].keysym), False, 0);
-				keys[i].pressed = 0;
-			}
-		}
-		pressed = NULL;
-	}
-	drawkeyboard();
+	if((k = findkey(ev->x, ev->y)))
+		unpress(k);
 }
 
 void
@@ -229,8 +184,9 @@ drawkey(Key *k) {
 		col = dc.norm;
 	XSetForeground(dpy, dc.gc, col[ColBG]);
 	XFillRectangles(dpy, dc.drawable, dc.gc, &r, 1);
-	XSetForeground(dpy, dc.gc, col[ColFG]);
+	XSetForeground(dpy, dc.gc, dc.norm[ColFG]);
 	XDrawRectangles(dpy, dc.drawable, dc.gc, &r, 1);
+	XSetForeground(dpy, dc.gc, col[ColFG]);
 	if(k->label)
 		l = k->label;
 	else
@@ -246,7 +202,7 @@ drawkey(Key *k) {
 }
 
 void
-destroynotify(XEvent *e) {
+unmapnotify(XEvent *e) {
 	running = False;
 }
 
@@ -291,7 +247,7 @@ initfont(const char *fontstr) {
 	dc.font.set = XCreateFontSet(dpy, fontstr, &missing, &n, &def);
 	if(missing) {
 		while(n--)
-			fprintf(stderr, "dwm: missing fontset: %s\n", missing[n]);
+			fprintf(stderr, "svkbd: missing fontset: %s\n", missing[n]);
 		XFreeStringList(missing);
 	}
 	if(dc.font.set) {
@@ -322,13 +278,11 @@ initfont(const char *fontstr) {
 
 void
 leavenotify(XEvent *e) {
-	Key *h = hover;
-
+	unpress(NULL);
 	if(!hover)
 		return;
 	hover = NULL;
-	drawkey(h);
-	XCopyArea(dpy, dc.drawable, win, dc.gc, h->x, h->y, h->w, h->h, h->x, h->y);
+	drawkeyboard();
 }
 
 void
@@ -345,6 +299,24 @@ motionnotify(XEvent *e) {
 			drawkey(hover);
 	}
 	XCopyArea(dpy, dc.drawable, win, dc.gc, 0, 0, ww, wh, 0, 0);
+}
+
+void
+press(Key *k, KeySym mod) {
+	int i;
+	k->pressed = !k->pressed;
+
+	if(!IsModifierKey(k->keysym)) {
+		for(i = 0; i < LENGTH(keys); i++)
+			if(keys[i].pressed && IsModifierKey(keys[i].keysym))
+				XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, keys[i].keysym), True, 0);
+		pressedmod = mod;
+		if(pressedmod)
+			XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, mod), True, 0);
+		XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, k->keysym), True, 0);
+	}
+	drawkey(k);
+	XCopyArea(dpy, dc.drawable, win, dc.gc, k->x, k->y, k->w, k->h, k->x, k->y);
 }
 
 void
@@ -414,6 +386,30 @@ textnw(const char *text, uint len) {
 }
 
 void
+unpress() {
+	int i;
+
+	for(i = 0; i < LENGTH(keys); i++)
+		if(keys[i].pressed && !IsModifierKey(keys[i].keysym)) {
+			XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, keys[i].keysym), False, 0);
+			keys[i].pressed = 0;
+			break;
+		}
+	if(i !=  LENGTH(keys)) {
+		for(i = 0; i < LENGTH(keys); i++) {
+			if(pressedmod)
+				XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, pressedmod), False, 0);
+			pressedmod = 0;
+			if(keys[i].pressed) {
+				XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, keys[i].keysym), False, 0);
+				keys[i].pressed = 0;
+			}
+		}
+		drawkeyboard();
+	}
+}
+
+void
 updatekeys() {
 	int rows, i, j;
 	int x = 0, y = 0, h, base;
@@ -429,7 +425,7 @@ updatekeys() {
 			keys[i].x = x;
 			keys[i].y = y;
 			keys[i].w = keys[i].width * (ww - 1) / base;
-			if(rows)
+			if(rows != 1)
 				keys[i].h = h;
 			else
 				keys[i].h = (wh - 1) - y;
@@ -447,17 +443,13 @@ main(int argc, char *argv[]) {
 		die("svkc-"VERSION", © 2006-2008 svkbd engineers, see LICENSE for details\n");
 	else if(argc != 1)
 		die("usage: svkbd [-v]\n");
-
 	if(!setlocale(LC_CTYPE, "") || !XSupportsLocale())
 		fprintf(stderr, "warning: no locale support\n");
-
 	if(!(dpy = XOpenDisplay(0)))
 		die("svkbd: cannot open display\n");
-
 	setup();
 	run();
 	cleanup();
-
 	XCloseDisplay(dpy);
 	return 0;
 }

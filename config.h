@@ -50,8 +50,7 @@ static Key keys[] = {
 	{ "'\"", XK_exclam, 1 },
 	{ "\\|", XK_backslash, 1 },
 	{ 0 },
-	{ 0, XK_Shift_L, 2 },
-	{ "<>|", XK_greater, 1 },
+	{ 0, XK_Shift_L, 3 },
 	{ 0, XK_z, 1 },
 	{ 0, XK_x, 1 },
 	{ 0, XK_c, 1 },
@@ -69,4 +68,9 @@ static Key keys[] = {
 	{ "", XK_space, 5 },
 	{ "Alt", XK_Alt_R, 2 },
 	{ "Ctrl", XK_Control_R, 2 },
+};
+
+Buttonmod buttonmods[] = {
+	{ XK_Shift_L, Button2 },
+	{ XK_Alt_L, Button3 },
 };
