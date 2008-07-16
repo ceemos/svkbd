@@ -166,7 +166,6 @@ drawkeyboard(void) {
 			drawkey(&keys[i]);
 	}
 	XSync(dpy, False);
-	XCopyArea(dpy, dc.drawable, win, dc.gc, 0, 0, ww, wh, 0, 0);
 }
 
 void
@@ -199,6 +198,7 @@ drawkey(Key *k) {
 		XmbDrawString(dpy, dc.drawable, dc.font.set, dc.gc, x, y, l, len);
 	else
 		XDrawString(dpy, dc.drawable, dc.gc, x, y, l, len);
+	XCopyArea(dpy, dc.drawable, win, dc.gc, k->x, k->y, k->w, k->h, k->x, k->y);
 }
 
 void
@@ -278,11 +278,13 @@ initfont(const char *fontstr) {
 
 void
 leavenotify(XEvent *e) {
+	Key *oh = hover;
+
 	unpress(NULL);
 	if(!hover)
 		return;
 	hover = NULL;
-	drawkeyboard();
+	drawkey(oh);
 }
 
 void
@@ -293,12 +295,13 @@ motionnotify(XEvent *e) {
 	if(h != hover) {
 		oh = hover;;
 		hover = h;
-		if(oh)
+		if(oh) {
 			drawkey(oh);
-		if(hover)
+		}
+		if(hover) {
 			drawkey(hover);
+		}
 	}
-	XCopyArea(dpy, dc.drawable, win, dc.gc, 0, 0, ww, wh, 0, 0);
 }
 
 void
@@ -316,7 +319,6 @@ press(Key *k, KeySym mod) {
 		XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, k->keysym), True, 0);
 	}
 	drawkey(k);
-	XCopyArea(dpy, dc.drawable, win, dc.gc, k->x, k->y, k->w, k->h, k->x, k->y);
 }
 
 void
@@ -393,6 +395,7 @@ unpress() {
 		if(keys[i].pressed && !IsModifierKey(keys[i].keysym)) {
 			XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, keys[i].keysym), False, 0);
 			keys[i].pressed = 0;
+			drawkey(&keys[i]);
 			break;
 		}
 	if(i !=  LENGTH(keys)) {
@@ -403,9 +406,9 @@ unpress() {
 			if(keys[i].pressed) {
 				XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, keys[i].keysym), False, 0);
 				keys[i].pressed = 0;
+				drawkey(&keys[i]);
 			}
 		}
-		drawkeyboard();
 	}
 }
 
