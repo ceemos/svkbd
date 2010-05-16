@@ -28,7 +28,6 @@ typedef unsigned long ulong;
 typedef struct {
 	ulong norm[ColLast];
 	ulong press[ColLast];
-	ulong hover[ColLast];
 	Drawable drawable;
 	GC gc;
 	struct {
@@ -67,7 +66,6 @@ static Key *findkey(int x, int y);
 static ulong getcolor(const char *colstr);
 static void initfont(const char *fontstr);
 static void leavenotify(XEvent *e);
-static void motionnotify(XEvent *e);
 static void press(Key *k, KeySym mod);
 static void run(void);
 static void setup(void);
@@ -85,13 +83,11 @@ static void (*handler[LASTEvent]) (XEvent *) = {
 	[UnmapNotify] = unmapnotify,
 	[Expose] = expose,
 	[LeaveNotify] = leavenotify,
-	[MotionNotify] = motionnotify,
 };
 static Display *dpy;
 static DC dc;
 static Window root, win;
 static Bool running = True;
-static Key *hover = NULL;
 static KeySym pressedmod = 0;
 /* configuration, allows nested code to access above variables */
 #include "config.h"
@@ -177,8 +173,6 @@ drawkey(Key *k) {
 
 	if(k->pressed)
 		col = dc.press;
-	else if(hover == k)
-		col = dc.hover;
 	else
 		col = dc.norm;
 	XSetForeground(dpy, dc.gc, col[ColBG]);
@@ -278,30 +272,7 @@ initfont(const char *fontstr) {
 
 void
 leavenotify(XEvent *e) {
-	Key *oh = hover;
-
 	unpress(NULL);
-	if(!hover)
-		return;
-	hover = NULL;
-	drawkey(oh);
-}
-
-void
-motionnotify(XEvent *e) {
-	XMotionEvent *ev = &e->xmotion;
-	Key *h = findkey(ev->x, ev->y), *oh;
-
-	if(h != hover) {
-		oh = hover;;
-		hover = h;
-		if(oh) {
-			drawkey(oh);
-		}
-		if(hover) {
-			drawkey(hover);
-		}
-	}
 }
 
 void
@@ -353,8 +324,6 @@ setup(void) {
 	dc.norm[ColFG] = getcolor(normfgcolor);
 	dc.press[ColBG] = getcolor(pressbgcolor);
 	dc.press[ColFG] = getcolor(pressfgcolor);
-	dc.hover[ColBG] = getcolor(hovbgcolor);
-	dc.hover[ColFG] = getcolor(hovfgcolor);
 	dc.drawable = XCreatePixmap(dpy, root, ww, wh, DefaultDepth(dpy, screen));
 	dc.gc = XCreateGC(dpy, root, 0, 0);
 	if(!dc.font.set)
@@ -363,9 +332,8 @@ setup(void) {
 		keys[i].pressed = 0;
 
 	win = XCreateSimpleWindow(dpy, root, wx, wy, ww, wh, 0, dc.norm[ColFG], dc.norm[ColBG]);
-	XSelectInput(dpy, win, StructureNotifyMask|PointerMotionMask|
-			ButtonReleaseMask|ButtonPressMask|ExposureMask|
-			LeaveWindowMask);
+	XSelectInput(dpy, win, StructureNotifyMask|ButtonReleaseMask|
+			ButtonPressMask|ExposureMask|LeaveWindowMask);
 	wmh = XAllocWMHints();
 	wmh->input = False;
 	wmh->flags = InputHint;
@@ -443,7 +411,7 @@ updatekeys() {
 int
 main(int argc, char *argv[]) {
 	if(argc == 2 && !strcmp("-v", argv[1]))
-		die("svkc-"VERSION", © 2006-2008 svkbd engineers, see LICENSE for details\n");
+		die("svkbd-"VERSION", © 2006-2010 svkbd engineers, see LICENSE for details\n");
 	else if(argc != 1)
 		die("usage: svkbd [-v]\n");
 	if(!setlocale(LC_CTYPE, "") || !XSupportsLocale())
