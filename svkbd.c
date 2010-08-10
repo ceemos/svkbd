@@ -296,7 +296,7 @@ void
 run(void) {
 	XEvent ev;
 
-	/* main event loop, also reads status text from stdin */
+	/* main event loop */
 	XSync(dpy, False);
 	while(running) {
 		XNextEvent(dpy, &ev);
