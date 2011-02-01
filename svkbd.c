@@ -309,6 +309,7 @@ void
 setup(void) {
 	int i;
 	XWMHints *wmh;
+	XSetWindowAttributes wa;
 
 	/* init screen */
 	screen = DefaultScreen(dpy);
@@ -331,7 +332,12 @@ setup(void) {
 	for(i = 0; i < LENGTH(keys); i++)
 		keys[i].pressed = 0;
 
-	win = XCreateSimpleWindow(dpy, root, wx, wy, ww, wh, 0, dc.norm[ColFG], dc.norm[ColBG]);
+	wa.override_redirect = True;
+	wa.border_pixel = dc.norm[ColFG];
+	wa.background_pixel = dc.norm[ColBG];
+	win = XCreateWindow(dpy, root, wx, wy, ww, wh, 0,
+			    CopyFromParent, CopyFromParent, CopyFromParent,
+			    CWOverrideRedirect | CWBorderPixel | CWBackingPixel, &wa);
 	XSelectInput(dpy, win, StructureNotifyMask|ButtonReleaseMask|
 			ButtonPressMask|ExposureMask|LeaveWindowMask);
 	wmh = XAllocWMHints();
