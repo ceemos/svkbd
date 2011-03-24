@@ -75,7 +75,6 @@ static void updatekeys();
 
 /* variables */
 static int screen;
-static int wx, wy, ww, wh;
 static void (*handler[LASTEvent]) (XEvent *) = {
 	[ButtonPress] = buttonpress,
 	[ButtonRelease] = buttonrelease,
@@ -211,7 +210,7 @@ expose(XEvent *e) {
 Key *
 findkey(int x, int y) {
 	int i;
-	
+
 	for(i = 0; i < LENGTH(keys); i++)
 		if(keys[i].keysym && x > keys[i].x &&
 				x < keys[i].x + keys[i].w &&
@@ -317,10 +316,20 @@ setup(void) {
 	initfont(font);
 
 	/* init appearance */
-	ww = DisplayWidth(dpy, screen);
-	wh = 200;
-	wx = 0;
-	wy = DisplayHeight(dpy, screen) - wh;
+	if (!ww)
+		ww = DisplayWidth(dpy, screen);
+	if (ww < 0)
+		ww = DisplayWidth(dpy, screen) / (ww * -1);
+
+	if (wh < 0)
+		wh = DisplayHeight(dpy, screen) / (wh * -1); 
+
+	if (wy < 0)
+		wy = DisplayHeight(dpy, screen) + wy;
+
+	if (wx < 0)
+		wx = DisplayWidth(dpy, screen) + wx;
+
 	dc.norm[ColBG] = getcolor(normbgcolor);
 	dc.norm[ColFG] = getcolor(normfgcolor);
 	dc.press[ColBG] = getcolor(pressbgcolor);
