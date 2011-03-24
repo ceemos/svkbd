@@ -425,12 +425,46 @@ updatekeys() {
 	}
 }
 
+void
+usage(char *argv0) {
+	fprintf(stderr, "usage: %s [-hv] [-wh height] [-ww width] "
+			"[-wx x position] [-wy y position]\n", argv0);
+	exit(1);
+}
+
 int
 main(int argc, char *argv[]) {
-	if(argc == 2 && !strcmp("-v", argv[1]))
-		die("svkbd-"VERSION", © 2006-2010 svkbd engineers, see LICENSE for details\n");
-	else if(argc != 1)
-		die("usage: svkbd [-v]\n");
+	int i;
+
+	for (i = 1; argv[i]; i++) {
+		if(!strcmp(argv[i], "-v")) {
+			die("svkbd-"VERSION", © 2006-2010 svkbd engineers,"
+				       " see LICENSE for details\n");
+		}
+		if(!strcmp(argv[i], "-wh")) {
+			wh = atoi(argv[i+1]);
+			i++;
+			continue;
+		}
+		if(!strcmp(argv[i], "-ww")) {
+			ww = atoi(argv[i+1]);
+			i++;
+			continue;
+		}
+		if(!strcmp(argv[i], "-wx")) {
+			wx = atoi(argv[i+1]);
+			i++;
+			continue;
+		}
+		if(!strcmp(argv[i], "-wy")) {
+			wy = atoi(argv[i+1]);
+			i++;
+			continue;
+		}
+		if(!strcmp(argv[i], "-h"))
+			usage(argv[0]);
+	}
+
 	if(!setlocale(LC_CTYPE, "") || !XSupportsLocale())
 		fprintf(stderr, "warning: no locale support\n");
 	if(!(dpy = XOpenDisplay(0)))
