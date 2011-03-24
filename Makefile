@@ -13,10 +13,11 @@ options:
 	@echo "CFLAGS   = ${CFLAGS}"
 	@echo "LDFLAGS  = ${LDFLAGS}"
 	@echo "CC       = ${CC}"
+	@echo "LAYOUT   = ${LAYOUT}"
 
 .c.o:
 	@echo CC $<
-	@${CC} -c ${CFLAGS} $<
+	@${CC} ${CPPFLAGS} -c ${CFLAGS} $<
 
 ${OBJ}: config.h config.mk
 
@@ -36,7 +37,7 @@ dist: clean
 	@echo creating dist tarball
 	@mkdir -p svkbd-${VERSION}
 	@cp -R LICENSE Makefile README config.def.h config.mk \
-		${SRC} svkbd-${VERSION}
+		${SRC} layouts svkbd-${VERSION}
 	@tar -cf svkbd-${VERSION}.tar svkbd-${VERSION}
 	@gzip svkbd-${VERSION}.tar
 	@rm -rf svkbd-${VERSION}
