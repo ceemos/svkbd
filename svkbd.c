@@ -177,6 +177,8 @@ drawkey(Key *k) {
 	XSetForeground(dpy, dc.gc, col[ColBG]);
 	XFillRectangles(dpy, dc.drawable, dc.gc, &r, 1);
 	XSetForeground(dpy, dc.gc, dc.norm[ColFG]);
+	r.height -= 1;
+	r.width -= 1;
 	XDrawRectangles(dpy, dc.drawable, dc.gc, &r, 1);
 	XSetForeground(dpy, dc.gc, col[ColFG]);
 	if(k->label)
@@ -410,15 +412,15 @@ updatekeys() {
 		for(x = 0; i < LENGTH(keys) && keys[i].keysym != 0; i++) {
 			keys[i].x = x;
 			keys[i].y = y;
-			keys[i].w = keys[i].width * (ww - 1) / base;
+			keys[i].w = keys[i].width * ww / base;
 			if(rows != 1)
 				keys[i].h = h;
 			else
-				keys[i].h = (wh - 1) - y;
+				keys[i].h = wh - y;
 			x += keys[i].w;
 		}
 		if(base != 0)
-			keys[i - 1].w = (ww - 1) - keys[i - 1].x;
+			keys[i - 1].w = ww - keys[i - 1].x;
 		y += h;
 	}
 }
