@@ -113,7 +113,7 @@ buttonrelease(XEvent *e) {
 	Key *k;
 
 	if((k = findkey(ev->x, ev->y)))
-		unpress(k);
+		unpress();
 }
 
 void
@@ -273,7 +273,7 @@ initfont(const char *fontstr) {
 
 void
 leavenotify(XEvent *e) {
-	unpress(NULL);
+	unpress();
 }
 
 void
