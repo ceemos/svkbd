@@ -373,7 +373,6 @@ setup(void) {
 	wmh = XAllocWMHints();
 	wmh->input = False;
 	wmh->flags = InputHint;
-	XSetWMHints(dpy, win, wmh);
 	XStringListToTextProperty(&name, 1, &str);
 	ch = XAllocClassHint();
 	ch->res_class = name;
