@@ -1,7 +1,7 @@
 # svkbd version
 VERSION = 0.1
 
-LAYOUT?=def
+LAYOUT ?= en
 
 # Customize below to fit your system
 
@@ -18,7 +18,6 @@ LIBS = -L/usr/lib -lc -L${X11LIB} -lX11 -lXtst
 
 # flags
 CPPFLAGS = -DVERSION=\"${VERSION}\" \
-	   -DCONFIGLAYOUT_H=\"layout.${LAYOUT}.h\" \
 	   ${XINERAMAFLAGS}
 CFLAGS = -g -std=c99 -pedantic -Wall -Os ${INCS} ${CPPFLAGS}
 LDFLAGS = -g ${LIBS}

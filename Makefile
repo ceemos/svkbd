@@ -4,7 +4,7 @@
 include config.mk
 
 SRC = svkbd.c
-OBJ = ${SRC:.c=.o}
+LAYOUTS = en de arrows
 
 all: options svkbd
 
@@ -15,29 +15,32 @@ options:
 	@echo "CC       = ${CC}"
 	@echo "LAYOUT   = ${LAYOUT}"
 
-.c.o:
-	@echo CC $<
-	@${CC} ${CPPFLAGS} -c ${CFLAGS} $<
-
-${OBJ}: config.h config.mk
-
-config.h:
+config.h: config.mk
 	@echo creating $@ from config.def.h
 	@cp config.def.h $@
 
-svkbd: ${OBJ}
+
+svkbd: svkbd.en
+	@echo CP $@
+	@cp $< $@
+
+svkbd.%: layout.%.h config.h ${SRC}
+	@echo creating layout.h from $<
+	@cp $< layout.h
 	@echo CC -o $@
-	@${CC} -o $@ ${OBJ} ${LDFLAGS}
+	@${CC} -o $@ ${SRC} ${LDFLAGS} ${CFLAGS}
 
 clean:
 	@echo cleaning
-	@rm -f svkbd ${OBJ} svkbd-${VERSION}.tar.gz
+	@for i in ${LAYOUTS}; do rm svkbd.$$i 2> /dev/null; done; true
+	@rm -f svkbd ${OBJ} svkbd-${VERSION}.tar.gz 2> /dev/null; true
 
 dist: clean
 	@echo creating dist tarball
 	@mkdir -p svkbd-${VERSION}
-	@cp -R LICENSE Makefile README config.def.h config.mk \
-		${SRC} layouts svkbd-${VERSION}
+	@cp LICENSE Makefile README config.def.h config.mk \
+		${SRC} svkbd-${VERSION}
+	@for i in ${LAYOUTS}; do cp layout.$$i.h svkbd.${VERSION} || exit 1; done
 	@tar -cf svkbd-${VERSION}.tar svkbd-${VERSION}
 	@gzip svkbd-${VERSION}.tar
 	@rm -rf svkbd-${VERSION}

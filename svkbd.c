@@ -20,6 +20,7 @@
 
 /* enums */
 enum { ColFG, ColBG, ColLast };
+enum { NetWMWindowType, NetLast };
 
 /* typedefs */
 typedef unsigned int uint;
@@ -57,6 +58,7 @@ static void buttonpress(XEvent *e);
 static void buttonrelease(XEvent *e);
 static void cleanup(void);
 static void configurenotify(XEvent *e);
+static void countrows();
 static void unmapnotify(XEvent *e);
 static void die(const char *errstr, ...);
 static void drawkeyboard(void);
@@ -83,13 +85,18 @@ static void (*handler[LASTEvent]) (XEvent *) = {
 	[Expose] = expose,
 	[LeaveNotify] = leavenotify,
 };
+static Atom netatom[NetLast];
 static Display *dpy;
 static DC dc;
 static Window root, win;
 static Bool running = True;
 static KeySym pressedmod = 0;
+static int rows, ww = 0, wh = 0, wx = 0, wy = 0;
+static char *name = "svkbd";
+static char *wintype = "_NET_WM_WINDOW_TYPE_TOOLBAR";
 /* configuration, allows nested code to access above variables */
 #include "config.h"
+#include "layout.h"
 
 void
 buttonpress(XEvent *e) {
@@ -140,6 +147,15 @@ configurenotify(XEvent *e) {
 		dc.drawable = XCreatePixmap(dpy, root, ww, wh, DefaultDepth(dpy, screen));
 		updatekeys();
 	}
+}
+
+void
+countrows() {
+	int i = 0;
+
+	for(i = 0, rows = 1; i < LENGTH(keys); i++)
+		if(keys[i].keysym == 0)
+			rows++;
 }
 
 void
@@ -308,30 +324,32 @@ run(void) {
 
 void
 setup(void) {
-	int i;
-	XWMHints *wmh;
 	XSetWindowAttributes wa;
+	XTextProperty str;
+	XClassHint *ch;
+	int i, sh, sw;
+	XWMHints *wmh;
 
 	/* init screen */
 	screen = DefaultScreen(dpy);
 	root = RootWindow(dpy, screen);
+	sw = DisplayWidth(dpy, screen);
+	sh = DisplayHeight(dpy, screen); 
 	initfont(font);
 
+	/* init atoms */
+	netatom[NetWMWindowType] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
+
 	/* init appearance */
-	if (!ww)
-		ww = DisplayWidth(dpy, screen);
-	if (ww < 0)
-		ww = DisplayWidth(dpy, screen) / (ww * -1);
-
-	if (wh < 0)
-		wh = DisplayHeight(dpy, screen) / (wh * -1); 
-
-	if (wy < 0)
-		wy = DisplayHeight(dpy, screen) + wy;
-
-	if (wx < 0)
-		wx = DisplayWidth(dpy, screen) + wx;
-
+	countrows();
+	if(!ww)
+		ww = sw - wx;
+	if(!wx)
+		wx = 0;
+	if(!wh)
+		wh = sh * rows / 32;
+	if(!wy)
+		wy = sh - wh;
 	dc.norm[ColBG] = getcolor(normbgcolor);
 	dc.norm[ColFG] = getcolor(normfgcolor);
 	dc.press[ColBG] = getcolor(pressbgcolor);
@@ -343,7 +361,7 @@ setup(void) {
 	for(i = 0; i < LENGTH(keys); i++)
 		keys[i].pressed = 0;
 
-	wa.override_redirect = True;
+	wa.override_redirect = !wmborder;
 	wa.border_pixel = dc.norm[ColFG];
 	wa.background_pixel = dc.norm[ColBG];
 	win = XCreateWindow(dpy, root, wx, wy, ww, wh, 0,
@@ -351,11 +369,27 @@ setup(void) {
 			    CWOverrideRedirect | CWBorderPixel | CWBackingPixel, &wa);
 	XSelectInput(dpy, win, StructureNotifyMask|ButtonReleaseMask|
 			ButtonPressMask|ExposureMask|LeaveWindowMask);
+
 	wmh = XAllocWMHints();
 	wmh->input = False;
 	wmh->flags = InputHint;
 	XSetWMHints(dpy, win, wmh);
+	XStringListToTextProperty(&name, 1, &str);
+	ch = XAllocClassHint();
+	ch->res_class = name;
+	ch->res_name = name;
+
+	XSetWMProperties(dpy, win, &str, &str, NULL, 0, NULL, wmh,
+			ch);
+
+	XFree(ch);
 	XFree(wmh);
+	XFree(str.value);
+
+	XStringListToTextProperty(&wintype, 1, &str);
+	XSetTextProperty(dpy, win, &str, netatom[NetWMWindowType]);
+	XFree(str.value);
+
 	XMapRaised(dpy, win);
 	updatekeys();
 	drawkeyboard();
@@ -399,12 +433,9 @@ unpress() {
 
 void
 updatekeys() {
-	int rows, i, j;
+	int i, j;
 	int x = 0, y = 0, h, base;
 
-	for(i = 0, rows = 1; i < LENGTH(keys); i++)
-		if(keys[i].keysym == 0)
-			rows++;
 	h = wh / rows;
 	for(i = 0; i < LENGTH(keys); i++, rows--) {
 		for(j = i, base = 0; j < LENGTH(keys) && keys[j].keysym != 0; j++)
@@ -441,27 +472,25 @@ main(int argc, char *argv[]) {
 			die("svkbd-"VERSION", © 2006-2010 svkbd engineers,"
 				       " see LICENSE for details\n");
 		}
-		if(!strcmp(argv[i], "-wh")) {
-			wh = atoi(argv[i+1]);
-			i++;
-			continue;
+		else if(argv[i][0] == '-' && argv[i][1] == 'w') {
+			switch(i >= argc - 1 ? 0 : argv[i][2]) {
+			case 'h':
+				wh = atoi(argv[i+1]);
+				break;
+			case 'w':
+				ww = atoi(argv[i+1]);
+				break;
+			case 'x':
+				wx = atoi(argv[i+1]);
+				break;
+			case 'y':
+				wy = atoi(argv[i+1]);
+				break;
+			default:
+				usage(argv[0]);
+			}
 		}
-		if(!strcmp(argv[i], "-ww")) {
-			ww = atoi(argv[i+1]);
-			i++;
-			continue;
-		}
-		if(!strcmp(argv[i], "-wx")) {
-			wx = atoi(argv[i+1]);
-			i++;
-			continue;
-		}
-		if(!strcmp(argv[i], "-wy")) {
-			wy = atoi(argv[i+1]);
-			i++;
-			continue;
-		}
-		if(!strcmp(argv[i], "-h"))
+		else if(!strcmp(argv[i], "-h"))
 			usage(argv[0]);
 	}
 
