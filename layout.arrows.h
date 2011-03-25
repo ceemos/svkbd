@@ -1,9 +1,3 @@
-
-static int wh = 30;
-static int ww = 0;
-static int wx = 0;
-static int wy = -30;
-
 static Key keys[] = {
 	{ 0, XK_Shift_L, 2 },
 	{ "←", XK_Left, 1 },

@@ -1,8 +1,3 @@
-static int wh = 200;
-static int ww = 0;
-static int wx = 0;
-static int wy = -200;
-
 static Key keys[] = {
 	{ "1!", XK_1, 1 },
 	{ "2@", XK_2, 1 },

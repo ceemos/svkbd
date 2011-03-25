@@ -1,8 +1,3 @@
-static int wh = 200;
-static int ww = 0;
-static int wx = 0;
-static int wy = -200;
-
 static Key keys[] = {
 	{ "^°′", XK_dead_circumflex, 1},
 	{ "1!¹", XK_1, 1 },
