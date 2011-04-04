@@ -297,6 +297,13 @@ press(Key *k, KeySym mod) {
 	int i;
 	k->pressed = !k->pressed;
 
+	switch(k->keysym) {
+	case XK_Cancel:
+		exit(0);
+	default:
+		break;
+	}
+
 	if(!IsModifierKey(k->keysym)) {
 		for(i = 0; i < LENGTH(keys); i++)
 			if(keys[i].pressed && IsModifierKey(keys[i].keysym))

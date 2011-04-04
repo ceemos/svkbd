@@ -64,6 +64,7 @@ static Key keys[] = {
 	{ "Alt Gr", XK_ISO_Level3_Shift, 2 },
 	{ "Menu", XK_Menu, 2 },
 	{ "Ctrl", XK_Control_R, 2 },
+	{ "[X]", XK_Cancel, 1},
 };
 
 Buttonmod buttonmods[] = {

@@ -60,6 +60,7 @@ static Key keys[] = {
 	{ "", XK_space, 5 },
 	{ "Alt", XK_Alt_R, 2 },
 	{ "Ctrl", XK_Control_R, 2 },
+	{ "[X]", XK_Cancel, 1},
 };
 
 Buttonmod buttonmods[] = {
