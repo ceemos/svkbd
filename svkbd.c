@@ -333,8 +333,8 @@ setup(void) {
 	/* init screen */
 	screen = DefaultScreen(dpy);
 	root = RootWindow(dpy, screen);
-	sw = DisplayWidth(dpy, screen);
-	sh = DisplayHeight(dpy, screen); 
+	sw = DisplayWidth(dpy, screen) - 1;
+	sh = DisplayHeight(dpy, screen) - 1;
 	initfont(font);
 
 	/* init atoms */
@@ -344,12 +344,21 @@ setup(void) {
 	countrows();
 	if(!ww)
 		ww = sw - wx;
+	if(ww < 0)
+		ww = sw + ww;
 	if(!wx)
 		wx = 0;
+	if(wx < 0)
+		wx = sw + wx;
 	if(!wh)
 		wh = sh * rows / 32;
+	if(wh < 0)
+		wh = sh + wh;
 	if(!wy)
 		wy = sh - wh;
+	if(wy < 0)
+		wy = sh + wy - wh;
+
 	dc.norm[ColBG] = getcolor(normbgcolor);
 	dc.norm[ColFG] = getcolor(normfgcolor);
 	dc.press[ColBG] = getcolor(pressbgcolor);
