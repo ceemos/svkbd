@@ -91,7 +91,7 @@ static DC dc;
 static Window root, win;
 static Bool running = True;
 static KeySym pressedmod = 0;
-static int rows, ww = 0, wh = 0, wx = 0, wy = 0;
+static int rows = 0, ww = 0, wh = 0, wx = 0, wy = 0;
 static char *name = "svkbd";
 static char *wintype = "_NET_WM_WINDOW_TYPE_TOOLBAR";
 /* configuration, allows nested code to access above variables */
@@ -445,17 +445,17 @@ updatekeys() {
 	int x = 0, y = 0, h, base;
 
 	h = wh / rows;
-	for(i = 0; i < LENGTH(keys); i++, rows--) {
+	for(i = 0; i < LENGTH(keys); i++) {
 		for(j = i, base = 0; j < LENGTH(keys) && keys[j].keysym != 0; j++)
 			base += keys[j].width;
 		for(x = 0; i < LENGTH(keys) && keys[i].keysym != 0; i++) {
 			keys[i].x = x;
 			keys[i].y = y;
 			keys[i].w = keys[i].width * ww / base;
-			if(rows != 1)
-				keys[i].h = h;
-			else
+			if(rows == i + 1)
 				keys[i].h = wh - y;
+			else
+				keys[i].h = h;
 			x += keys[i].w;
 		}
 		if(base != 0)

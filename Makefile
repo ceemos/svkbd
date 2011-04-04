@@ -6,7 +6,7 @@ include config.mk
 SRC = svkbd.c
 LAYOUTS = en de arrows
 
-all: options svkbd.en
+all: options svkbd-en
 
 options:
 	@echo svkbd build options:
@@ -19,7 +19,7 @@ config.h: config.mk
 	@echo creating $@ from config.def.h
 	@cp config.def.h $@
 
-svkbd.%: layout.%.h config.h ${SRC}
+svkbd-%: layout.%.h config.h ${SRC}
 	@echo creating layout.h from $<
 	@cp $< layout.h
 	@echo CC -o $@
@@ -29,7 +29,7 @@ clean:
 	@echo cleaning
 	@for i in ${LAYOUTS}; \
 	do \
-		rm -f svkbd.$$i 2> /dev/null; \
+		rm -f svkbd-$$i 2> /dev/null; \
 	done; true
 	@rm -f ${OBJ} svkbd-${VERSION}.tar.gz 2> /dev/null; true
 
