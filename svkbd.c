@@ -20,7 +20,7 @@
 
 /* enums */
 enum { ColFG, ColBG, ColLast };
-enum { NetWMWindowType, NetLast };
+enum { NetWMWindowType, NetWMWindowTypeDock, NetLast };
 
 /* typedefs */
 typedef unsigned int uint;
@@ -93,7 +93,6 @@ static Bool running = True;
 static KeySym pressedmod = 0;
 static int rows = 0, ww = 0, wh = 0, wx = 0, wy = 0;
 static char *name = "svkbd";
-static char *wintype = "_NET_WM_WINDOW_TYPE_TOOLBAR";
 /* configuration, allows nested code to access above variables */
 #include "config.h"
 #include "layout.h"
@@ -346,6 +345,7 @@ setup(void) {
 
 	/* init atoms */
 	netatom[NetWMWindowType] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
+	netatom[NetWMWindowTypeDock] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
 
 	/* init appearance */
 	countrows();
@@ -401,10 +401,9 @@ setup(void) {
 	XFree(wmh);
 	XFree(str.value);
 
-	XStringListToTextProperty(&wintype, 1, &str);
-	XSetTextProperty(dpy, win, &str, netatom[NetWMWindowType]);
-	XFree(str.value);
-
+	XChangeProperty(dpy, win, netatom[NetWMWindowType], XA_ATOM,
+			32, PropModeReplace,
+			(unsigned char *)&netatom[NetWMWindowTypeDock], 1);
 	XMapRaised(dpy, win);
 	updatekeys();
 	drawkeyboard();
