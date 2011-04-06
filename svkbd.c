@@ -20,7 +20,7 @@
 
 /* enums */
 enum { ColFG, ColBG, ColLast };
-enum { NetWMWindowType, NetWMWindowTypeDock, NetLast };
+enum { NetWMWindowType, NetLast };
 
 /* typedefs */
 typedef unsigned int uint;
@@ -89,7 +89,7 @@ static Atom netatom[NetLast];
 static Display *dpy;
 static DC dc;
 static Window root, win;
-static Bool running = True;
+static Bool running = True, istoolbar = False;
 static KeySym pressedmod = 0;
 static int rows = 0, ww = 0, wh = 0, wx = 0, wy = 0;
 static char *name = "svkbd";
@@ -333,6 +333,7 @@ setup(void) {
 	XSetWindowAttributes wa;
 	XTextProperty str;
 	XClassHint *ch;
+	Atom atype;
 	int i, sh, sw;
 	XWMHints *wmh;
 
@@ -345,7 +346,10 @@ setup(void) {
 
 	/* init atoms */
 	netatom[NetWMWindowType] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
-	netatom[NetWMWindowTypeDock] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
+	if(istoolbar)
+		atype = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_TOOLBAR", False);
+	else
+		atype = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
 
 	/* init appearance */
 	countrows();
@@ -403,7 +407,7 @@ setup(void) {
 
 	XChangeProperty(dpy, win, netatom[NetWMWindowType], XA_ATOM,
 			32, PropModeReplace,
-			(unsigned char *)&netatom[NetWMWindowTypeDock], 1);
+			(unsigned char *)&atype, 1);
 	XMapRaised(dpy, win);
 	updatekeys();
 	drawkeyboard();
@@ -472,7 +476,7 @@ updatekeys() {
 
 void
 usage(char *argv0) {
-	fprintf(stderr, "usage: %s [-hv] [-wh height] [-ww width] "
+	fprintf(stderr, "usage: %s [-htv] [-wh height] [-ww width] "
 			"[-wx x position] [-wy y position]\n", argv0);
 	exit(1);
 }
@@ -485,6 +489,10 @@ main(int argc, char *argv[]) {
 		if(!strcmp(argv[i], "-v")) {
 			die("svkbd-"VERSION", © 2006-2010 svkbd engineers,"
 				       " see LICENSE for details\n");
+		}
+		if(!strcmp(argv[i], "-t")) {
+			istoolbar = True;
+			continue;
 		}
 		else if(argv[i][0] == '-' && argv[i][1] == 'w') {
 			switch(i >= argc - 1 ? 0 : argv[i][2]) {
