@@ -51,11 +51,11 @@ install: all
 	@mkdir -p ${DESTDIR}${PREFIX}/bin
 	@for i in ${LAYOUTS}; \
 	do \
-		if [ -e svkbd.$$i ]; \
+		if [ -e svkbd-$$i ]; \
 		then \
-			echo CP svkbd.$$i; \
-			cp svkbd.$$i ${DESTDIR}${PREFIX}/bin; \
-			chmod 755 ${DESTDIR}${PREFIX}/bin/svkbd.$$i; \
+			echo CP svkbd-$$i; \
+			cp svkbd-$$i ${DESTDIR}${PREFIX}/bin; \
+			chmod 755 ${DESTDIR}${PREFIX}/bin/svkbd-$$i; \
 		fi \
 	done
 #	@echo installing manual page to ${DESTDIR}${MANPREFIX}/man1
@@ -65,7 +65,7 @@ install: all
 
 uninstall:
 	@echo removing executable files from ${DESTDIR}${PREFIX}/bin
-	@rm -f ${DESTDIR}${PREFIX}/bin/svkbd.*
+	@rm -f ${DESTDIR}${PREFIX}/bin/svkbd-*
 #	@echo removing manual page from ${DESTDIR}${MANPREFIX}/man1
 #	@rm -f ${DESTDIR}${MANPREFIX}/man1/svkbd.1
 
