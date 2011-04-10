@@ -452,17 +452,17 @@ unpress() {
 void
 updatekeys() {
 	int i, j;
-	int x = 0, y = 0, h, base;
+	int x = 0, y = 0, h, base, r = 0;
 
 	h = wh / rows;
 	for(i = 0; i < LENGTH(keys); i++) {
 		for(j = i, base = 0; j < LENGTH(keys) && keys[j].keysym != 0; j++)
 			base += keys[j].width;
-		for(x = 0; i < LENGTH(keys) && keys[i].keysym != 0; i++) {
+		for(x = 0; i < LENGTH(keys) && keys[i].keysym != 0; i++, r++) {
 			keys[i].x = x;
 			keys[i].y = y;
 			keys[i].w = keys[i].width * ww / base;
-			if(rows == i + 1)
+			if(rows == r - 1)
 				keys[i].h = wh - y;
 			else
 				keys[i].h = h;
