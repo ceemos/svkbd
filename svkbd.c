@@ -340,8 +340,8 @@ setup(void) {
 	/* init screen */
 	screen = DefaultScreen(dpy);
 	root = RootWindow(dpy, screen);
-	sw = DisplayWidth(dpy, screen) - 1;
-	sh = DisplayHeight(dpy, screen) - 1;
+	sw = DisplayWidth(dpy, screen);
+	sh = DisplayHeight(dpy, screen);
 	initfont(font);
 
 	/* init atoms */
@@ -356,7 +356,7 @@ setup(void) {
 	if(!ww)
 		ww = sw - wx;
 	if(ww < 0)
-		ww = sw + ww;
+		ww = sw + ww + 1;
 	if(!wx)
 		wx = 0;
 	if(wx < 0)
@@ -364,7 +364,7 @@ setup(void) {
 	if(!wh)
 		wh = sh * rows / 32;
 	if(wh < 0)
-		wh = sh + wh;
+		wh = sh + wh + 1;
 	if(!wy)
 		wy = sh - wh;
 	if(wy < 0)
@@ -454,22 +454,22 @@ updatekeys() {
 	int i, j;
 	int x = 0, y = 0, h, base, r = 0;
 
-	h = wh / rows;
+	h = (wh - 1) / rows;
 	for(i = 0; i < LENGTH(keys); i++) {
 		for(j = i, base = 0; j < LENGTH(keys) && keys[j].keysym != 0; j++)
 			base += keys[j].width;
 		for(x = 0; i < LENGTH(keys) && keys[i].keysym != 0; i++, r++) {
 			keys[i].x = x;
 			keys[i].y = y;
-			keys[i].w = keys[i].width * ww / base;
+			keys[i].w = keys[i].width * (ww - 1) / base;
 			if(rows == r - 1)
-				keys[i].h = wh - y;
+				keys[i].h = wh - 1 - y;
 			else
 				keys[i].h = h;
 			x += keys[i].w;
 		}
 		if(base != 0)
-			keys[i - 1].w = ww - keys[i - 1].x;
+			keys[i - 1].w = ww - 1 - keys[i - 1].x;
 		y += h;
 	}
 }
