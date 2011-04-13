@@ -462,7 +462,7 @@ updatekeys() {
 			keys[i].x = x;
 			keys[i].y = y;
 			keys[i].w = keys[i].width * (ww - 1) / base;
-			keys[i].h = r == 1 ? wh - y : h;
+			keys[i].h = r == 1 ? wh - y - 1 : h;
 			x += keys[i].w;
 		}
 		if(base != 0)
