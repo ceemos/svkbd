@@ -449,24 +449,27 @@ setup(void) {
 	initfont(font);
 
 	/* init atoms */
-	netatom[NetWMWindowType] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
-	if(isdock)
+	if(isdock) {
+		netatom[NetWMWindowType] = XInternAtom(dpy,
+				"_NET_WM_WINDOW_TYPE", False);
 		atype = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
+	}
 
 	/* init appearance */
 	countrows();
 	if(!ww)
-		ww = sw - wx;
+		ww = sw;
 	if(ww < 0)
 		ww = sw + ww + 1;
-	if(!wx)
-		wx = 0;
-	if(wx < 0)
-		wx = sw + wx;
 	if(!wh)
 		wh = sh * rows / 32;
 	if(wh < 0)
 		wh = sh + wh + 1;
+
+	if(!wx)
+		wx = 0;
+	if(wx < 0)
+		wx = sw + wx - ww;
 	if(!wy)
 		wy = sh - wh;
 	if(wy < 0)
@@ -592,10 +595,10 @@ main(int argc, char *argv[]) {
 				ww = (int)wr;
 			if(bitm & HeightValue)
 				wh = (int)hr;
-			if(bitm & XNegative)
-				wx *= -1;
-			if(bitm & YNegative)
-				wy *= -1;
+			if(bitm & XNegative && wx == 0)
+				wx = -1;
+			if(bitm & YNegative && wy == 0)
+				wy = -1;
 		} else if(!strcmp(argv[i], "-h")) {
 			usage(argv[0]);
 		}
