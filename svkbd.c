@@ -29,6 +29,8 @@ typedef unsigned long ulong;
 typedef struct {
 	ulong norm[ColLast];
 	ulong press[ColLast];
+	ulong high[ColLast];
+
 	Drawable drawable;
 	GC gc;
 	struct {
@@ -46,6 +48,7 @@ typedef struct {
 	uint width;
 	int x, y, w, h;
 	Bool pressed;
+	Bool highlighted;
 } Key;
 
 typedef struct {
@@ -54,6 +57,7 @@ typedef struct {
 } Buttonmod;
 
 /* function declarations */
+static void motionnotify(XEvent *e);
 static void buttonpress(XEvent *e);
 static void buttonrelease(XEvent *e);
 static void cleanup(void);
@@ -72,7 +76,7 @@ static void press(Key *k, KeySym mod);
 static void run(void);
 static void setup(void);
 static int textnw(const char *text, uint len);
-static void unpress();
+static void unpress(Key *k, KeySym mod);
 static void updatekeys();
 
 /* variables */
@@ -84,6 +88,7 @@ static void (*handler[LASTEvent]) (XEvent *) = {
 	[UnmapNotify] = unmapnotify,
 	[Expose] = expose,
 	[LeaveNotify] = leavenotify,
+	[MotionNotify] = motionnotify
 };
 static Atom netatom[NetLast];
 static Display *dpy;
@@ -93,9 +98,45 @@ static Bool running = True, istoolbar = False;
 static KeySym pressedmod = 0;
 static int rows = 0, ww = 0, wh = 0, wx = 0, wy = 0;
 static char *name = "svkbd";
+
+Bool ispressing = False;
+
 /* configuration, allows nested code to access above variables */
 #include "config.h"
 #include "layout.h"
+
+void
+motionnotify(XEvent *e)
+{
+	XPointerMovedEvent *ev = &e->xmotion;
+	int i;
+
+	for(i = 0; i < LENGTH(keys); i++) {
+		if(keys[i].keysym && ev->x > keys[i].x
+				&& ev->x < keys[i].x + keys[i].w
+				&& ev->y > keys[i].y
+				&& ev->y < keys[i].y + keys[i].h) {
+			if(keys[i].highlighted != True) {
+				if(ispressing) {
+					keys[i].pressed = True;
+				} else {
+					keys[i].highlighted = True;
+				}
+				drawkey(&keys[i]);
+			}
+			continue;
+		}
+
+		if(!IsModifierKey(keys[i].keysym) && keys[i].pressed == True) {
+			keys[i].pressed = False;
+			drawkey(&keys[i]);
+		}
+		if(keys[i].highlighted == True) {
+			keys[i].highlighted = False;
+			drawkey(&keys[i]);
+		}
+	}
+}
 
 void
 buttonpress(XEvent *e) {
@@ -104,22 +145,35 @@ buttonpress(XEvent *e) {
 	Key *k;
 	KeySym mod = 0;
 
-	for(i = 0; i < LENGTH(buttonmods); i++)
+	ispressing = True;
+
+	for(i = 0; i < LENGTH(buttonmods); i++) {
 		if(ev->button == buttonmods[i].button) {
 			mod = buttonmods[i].mod;
 			break;
 		}
+	}
 	if((k = findkey(ev->x, ev->y)))
 		press(k, mod);
 }
 
 void
 buttonrelease(XEvent *e) {
+	int i;
 	XButtonPressedEvent *ev = &e->xbutton;
 	Key *k;
+	KeySym mod = 0;
 
+	ispressing = False;
+
+	for(i = 0; i < LENGTH(buttonmods); i++) {
+		if(ev->button == buttonmods[i].button) {
+			mod = buttonmods[i].mod;
+			break;
+		}
+	}
 	if((k = findkey(ev->x, ev->y)))
-		unpress();
+		unpress(k, mod);
 }
 
 void
@@ -143,7 +197,8 @@ configurenotify(XEvent *e) {
 		ww = ev->width;
 		wh = ev->height;
 		XFreePixmap(dpy, dc.drawable);
-		dc.drawable = XCreatePixmap(dpy, root, ww, wh, DefaultDepth(dpy, screen));
+		dc.drawable = XCreatePixmap(dpy, root, ww, wh,
+				DefaultDepth(dpy, screen));
 		updatekeys();
 	}
 }
@@ -152,9 +207,10 @@ void
 countrows() {
 	int i = 0;
 
-	for(i = 0, rows = 1; i < LENGTH(keys); i++)
+	for(i = 0, rows = 1; i < LENGTH(keys); i++) {
 		if(keys[i].keysym == 0)
 			rows++;
+	}
 }
 
 void
@@ -187,8 +243,11 @@ drawkey(Key *k) {
 
 	if(k->pressed)
 		col = dc.press;
+	else if(k->highlighted)
+		col = dc.high;
 	else
 		col = dc.norm;
+
 	XSetForeground(dpy, dc.gc, col[ColBG]);
 	XFillRectangles(dpy, dc.drawable, dc.gc, &r, 1);
 	XSetForeground(dpy, dc.gc, dc.norm[ColFG]);
@@ -196,19 +255,23 @@ drawkey(Key *k) {
 	r.width -= 1;
 	XDrawRectangles(dpy, dc.drawable, dc.gc, &r, 1);
 	XSetForeground(dpy, dc.gc, col[ColFG]);
-	if(k->label)
+	if(k->label) {
 		l = k->label;
-	else
+	} else {
 		l = XKeysymToString(k->keysym);
+	}
 	len = strlen(l);
 	h = dc.font.ascent + dc.font.descent;
 	y = k->y + (k->h / 2) - (h / 2) + dc.font.ascent;
 	x = k->x + (k->w / 2) - (textnw(l, len) / 2);
-	if(dc.font.set)
-		XmbDrawString(dpy, dc.drawable, dc.font.set, dc.gc, x, y, l, len);
-	else
+	if(dc.font.set) {
+		XmbDrawString(dpy, dc.drawable, dc.font.set, dc.gc, x, y, l,
+				len);
+	} else {
 		XDrawString(dpy, dc.drawable, dc.gc, x, y, l, len);
-	XCopyArea(dpy, dc.drawable, win, dc.gc, k->x, k->y, k->w, k->h, k->x, k->y);
+	}
+	XCopyArea(dpy, dc.drawable, win, dc.gc, k->x, k->y, k->w, k->h,
+			k->x, k->y);
 }
 
 void
@@ -228,11 +291,13 @@ Key *
 findkey(int x, int y) {
 	int i;
 
-	for(i = 0; i < LENGTH(keys); i++)
+	for(i = 0; i < LENGTH(keys); i++) {
 		if(keys[i].keysym && x > keys[i].x &&
 				x < keys[i].x + keys[i].w &&
-				y > keys[i].y && y < keys[i].y + keys[i].h)
+				y > keys[i].y && y < keys[i].y + keys[i].h) {
 			return &keys[i];
+		}
+	}
 	return NULL;
 }
 
@@ -270,8 +335,7 @@ initfont(const char *fontstr) {
 			dc.font.descent = MAX(dc.font.descent,(*xfonts)->descent);
 			xfonts++;
 		}
-	}
-	else {
+	} else {
 		if(dc.font.xfont)
 			XFreeFont(dpy, dc.font.xfont);
 		dc.font.xfont = NULL;
@@ -286,7 +350,7 @@ initfont(const char *fontstr) {
 
 void
 leavenotify(XEvent *e) {
-	unpress();
+	unpress(NULL, 0);
 }
 
 void
@@ -294,23 +358,64 @@ press(Key *k, KeySym mod) {
 	int i;
 	k->pressed = !k->pressed;
 
-	switch(k->keysym) {
-	case XK_Cancel:
-		exit(0);
-	default:
-		break;
-	}
-
 	if(!IsModifierKey(k->keysym)) {
-		for(i = 0; i < LENGTH(keys); i++)
-			if(keys[i].pressed && IsModifierKey(keys[i].keysym))
-				XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, keys[i].keysym), True, 0);
+		for(i = 0; i < LENGTH(keys); i++) {
+			if(keys[i].pressed && IsModifierKey(keys[i].keysym)) {
+				XTestFakeKeyEvent(dpy,
+					XKeysymToKeycode(dpy, keys[i].keysym),
+					True, 0);
+			}
+		}
 		pressedmod = mod;
-		if(pressedmod)
-			XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, mod), True, 0);
+		if(pressedmod) {
+			XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, mod),
+					True, 0);
+		}
 		XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, k->keysym), True, 0);
 	}
 	drawkey(k);
+}
+
+void
+unpress(Key *k, KeySym mod) {
+	int i;
+
+	if(k != NULL) {
+		switch(k->keysym) {
+		case XK_Cancel:
+			exit(0);
+		default:
+			break;
+		}
+	}
+
+	for(i = 0; i < LENGTH(keys); i++) {
+		if(keys[i].pressed && !IsModifierKey(keys[i].keysym)) {
+			XTestFakeKeyEvent(dpy,
+				XKeysymToKeycode(dpy, keys[i].keysym),
+				False, 0);
+			keys[i].pressed = 0;
+			drawkey(&keys[i]);
+			break;
+		}
+	}
+	if(i !=  LENGTH(keys)) {
+		for(i = 0; i < LENGTH(keys); i++) {
+			if(pressedmod) {
+				XTestFakeKeyEvent(dpy,
+					XKeysymToKeycode(dpy, pressedmod),
+					False, 0);
+			}
+			pressedmod = 0;
+			if(keys[i].pressed) {
+				XTestFakeKeyEvent(dpy,
+					XKeysymToKeycode(dpy,
+						keys[i].keysym), False, 0);
+				keys[i].pressed = 0;
+				drawkey(&keys[i]);
+			}
+		}
+	}
 }
 
 void
@@ -372,7 +477,10 @@ setup(void) {
 	dc.norm[ColFG] = getcolor(normfgcolor);
 	dc.press[ColBG] = getcolor(pressbgcolor);
 	dc.press[ColFG] = getcolor(pressfgcolor);
-	dc.drawable = XCreatePixmap(dpy, root, ww, wh, DefaultDepth(dpy, screen));
+	dc.high[ColBG] = getcolor(highlightbgcolor);
+	dc.high[ColFG] = getcolor(highlightfgcolor);
+	dc.drawable = XCreatePixmap(dpy, root, ww, wh,
+			DefaultDepth(dpy, screen));
 	dc.gc = XCreateGC(dpy, root, 0, 0);
 	if(!dc.font.set)
 		XSetFont(dpy, dc.gc, dc.font.xfont->fid);
@@ -384,9 +492,11 @@ setup(void) {
 	wa.background_pixel = dc.norm[ColBG];
 	win = XCreateWindow(dpy, root, wx, wy, ww, wh, 0,
 			    CopyFromParent, CopyFromParent, CopyFromParent,
-			    CWOverrideRedirect | CWBorderPixel | CWBackingPixel, &wa);
+			    CWOverrideRedirect | CWBorderPixel |
+			    CWBackingPixel, &wa);
 	XSelectInput(dpy, win, StructureNotifyMask|ButtonReleaseMask|
-			ButtonPressMask|ExposureMask|LeaveWindowMask);
+			ButtonPressMask|ExposureMask|LeaveWindowMask|
+			PointerMotionMask);
 
 	wmh = XAllocWMHints();
 	wmh->input = False;
@@ -420,31 +530,6 @@ textnw(const char *text, uint len) {
 		return r.width;
 	}
 	return XTextWidth(dc.font.xfont, text, len);
-}
-
-void
-unpress() {
-	int i;
-
-	for(i = 0; i < LENGTH(keys); i++)
-		if(keys[i].pressed && !IsModifierKey(keys[i].keysym)) {
-			XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, keys[i].keysym), False, 0);
-			keys[i].pressed = 0;
-			drawkey(&keys[i]);
-			break;
-		}
-	if(i !=  LENGTH(keys)) {
-		for(i = 0; i < LENGTH(keys); i++) {
-			if(pressedmod)
-				XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, pressedmod), False, 0);
-			pressedmod = 0;
-			if(keys[i].pressed) {
-				XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, keys[i].keysym), False, 0);
-				keys[i].pressed = 0;
-				drawkey(&keys[i]);
-			}
-		}
-	}
 }
 
 void
