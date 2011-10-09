@@ -94,7 +94,7 @@ static Atom netatom[NetLast];
 static Display *dpy;
 static DC dc;
 static Window root, win;
-static Bool running = True, istoolbar = False;
+static Bool running = True, isdock = False;
 static KeySym pressedmod = 0;
 static int rows = 0, ww = 0, wh = 0, wx = 0, wy = 0;
 static char *name = "svkbd";
@@ -435,8 +435,9 @@ void
 setup(void) {
 	XSetWindowAttributes wa;
 	XTextProperty str;
+	XSizeHints *sizeh = NULL;
 	XClassHint *ch;
-	Atom atype;
+	Atom atype = -1;
 	int i, sh, sw;
 	XWMHints *wmh;
 
@@ -449,9 +450,7 @@ setup(void) {
 
 	/* init atoms */
 	netatom[NetWMWindowType] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
-	if(istoolbar)
-		atype = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_TOOLBAR", False);
-	else
+	if(isdock)
 		atype = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
 
 	/* init appearance */
@@ -501,21 +500,32 @@ setup(void) {
 	wmh = XAllocWMHints();
 	wmh->input = False;
 	wmh->flags = InputHint;
+	if(!isdock) {
+		sizeh = XAllocSizeHints();
+		sizeh->flags = PMaxSize | PMinSize;
+		sizeh->min_width = sizeh->max_width = ww;
+		sizeh->min_height = sizeh->max_height = wh;
+	}
 	XStringListToTextProperty(&name, 1, &str);
 	ch = XAllocClassHint();
 	ch->res_class = name;
 	ch->res_name = name;
 
-	XSetWMProperties(dpy, win, &str, &str, NULL, 0, NULL, wmh,
+	XSetWMProperties(dpy, win, &str, &str, NULL, 0, sizeh, wmh,
 			ch);
 
 	XFree(ch);
 	XFree(wmh);
 	XFree(str.value);
+	if(sizeh != NULL)
+		XFree(sizeh);
 
-	XChangeProperty(dpy, win, netatom[NetWMWindowType], XA_ATOM,
-			32, PropModeReplace,
-			(unsigned char *)&atype, 1);
+	if(isdock) {
+		XChangeProperty(dpy, win, netatom[NetWMWindowType], XA_ATOM,
+				32, PropModeReplace,
+				(unsigned char *)&atype, 1);
+	}
+
 	XMapRaised(dpy, win);
 	updatekeys();
 	drawkeyboard();
@@ -556,7 +566,7 @@ updatekeys() {
 
 void
 usage(char *argv0) {
-	fprintf(stderr, "usage: %s [-htv] [-g geometry]\n", argv0);
+	fprintf(stderr, "usage: %s [-hdv] [-g geometry]\n", argv0);
 	exit(1);
 }
 
@@ -569,8 +579,8 @@ main(int argc, char *argv[]) {
 		if(!strcmp(argv[i], "-v")) {
 			die("svkbd-"VERSION", © 2006-2010 svkbd engineers,"
 				       " see LICENSE for details\n");
-		} else if(!strcmp(argv[i], "-t")) {
-			istoolbar = True;
+		} else if(!strcmp(argv[i], "-d")) {
+			isdock = True;
 			continue;
 		} else if(!strcmp(argv[i], "-g")) {
 			bitm = XParseGeometry(argv[i+1], &xr, &yr, &wr, &hr);
