@@ -585,7 +585,7 @@ main(int argc, char *argv[]) {
 		} else if(!strcmp(argv[i], "-d")) {
 			isdock = True;
 			continue;
-		} else if(!strcmp(argv[i], "-g")) {
+		} else if(!strncmp(argv[i], "-g", 2)) {
 			bitm = XParseGeometry(argv[i+1], &xr, &yr, &wr, &hr);
 			if(bitm & XValue)
 				wx = xr;
