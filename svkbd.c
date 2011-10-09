@@ -556,44 +556,39 @@ updatekeys() {
 
 void
 usage(char *argv0) {
-	fprintf(stderr, "usage: %s [-htv] [-wh height] [-ww width] "
-			"[-wx x position] [-wy y position]\n", argv0);
+	fprintf(stderr, "usage: %s [-htv] [-g geometry]\n", argv0);
 	exit(1);
 }
 
 int
 main(int argc, char *argv[]) {
-	int i;
+	int i, xr, yr, bitm;
+	unsigned int wr, hr;
 
 	for (i = 1; argv[i]; i++) {
 		if(!strcmp(argv[i], "-v")) {
 			die("svkbd-"VERSION", © 2006-2010 svkbd engineers,"
 				       " see LICENSE for details\n");
-		}
-		if(!strcmp(argv[i], "-t")) {
+		} else if(!strcmp(argv[i], "-t")) {
 			istoolbar = True;
 			continue;
-		}
-		else if(argv[i][0] == '-' && argv[i][1] == 'w') {
-			switch(i >= argc - 1 ? 0 : argv[i][2]) {
-			case 'h':
-				wh = atoi(argv[i+1]);
-				break;
-			case 'w':
-				ww = atoi(argv[i+1]);
-				break;
-			case 'x':
-				wx = atoi(argv[i+1]);
-				break;
-			case 'y':
-				wy = atoi(argv[i+1]);
-				break;
-			default:
-				usage(argv[0]);
-			}
-		}
-		else if(!strcmp(argv[i], "-h"))
+		} else if(!strcmp(argv[i], "-g")) {
+			bitm = XParseGeometry(argv[i+1], &xr, &yr, &wr, &hr);
+			if(bitm & XValue)
+				wx = xr;
+			if(bitm & YValue)
+				wy = yr;
+			if(bitm & WidthValue)
+				ww = (int)wr;
+			if(bitm & HeightValue)
+				wh = (int)hr;
+			if(bitm & XNegative)
+				wx *= -1;
+			if(bitm & YNegative)
+				wy *= -1;
+		} else if(!strcmp(argv[i], "-h")) {
 			usage(argv[0]);
+		}
 	}
 
 	if(!setlocale(LC_CTYPE, "") || !XSupportsLocale())
