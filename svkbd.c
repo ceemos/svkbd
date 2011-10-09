@@ -459,12 +459,8 @@ setup(void) {
 	countrows();
 	if(!ww)
 		ww = sw;
-	if(ww < 0)
-		ww = sw + ww + 1;
 	if(!wh)
 		wh = sh * rows / 32;
-	if(wh < 0)
-		wh = sh + wh + 1;
 
 	if(!wx)
 		wx = 0;
