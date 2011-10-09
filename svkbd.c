@@ -599,6 +599,7 @@ main(int argc, char *argv[]) {
 				wx = -1;
 			if(bitm & YNegative && wy == 0)
 				wy = -1;
+			i++;
 		} else if(!strcmp(argv[i], "-h")) {
 			usage(argv[0]);
 		}
