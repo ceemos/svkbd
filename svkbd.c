@@ -582,6 +582,9 @@ main(int argc, char *argv[]) {
 			isdock = True;
 			continue;
 		} else if(!strncmp(argv[i], "-g", 2)) {
+			if(i >= argc - 1)
+				continue;
+
 			bitm = XParseGeometry(argv[i+1], &xr, &yr, &wr, &hr);
 			if(bitm & XValue)
 				wx = xr;
