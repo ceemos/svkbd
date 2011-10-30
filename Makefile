@@ -4,7 +4,6 @@
 include config.mk
 
 SRC = svkbd.c
-LAYOUTS = en de arrows
 
 all: options svkbd-en
 
@@ -13,7 +12,6 @@ options:
 	@echo "CFLAGS   = ${CFLAGS}"
 	@echo "LDFLAGS  = ${LDFLAGS}"
 	@echo "CC       = ${CC}"
-	@echo "LAYOUT   = ${LAYOUT}"
 
 config.h: config.mk
 	@echo creating $@ from config.def.h
@@ -27,9 +25,12 @@ svkbd-%: layout.%.h config.h ${SRC}
 
 clean:
 	@echo cleaning
-	@for i in ${LAYOUTS}; \
+	@for i in svkbd-*; \
 	do \
-		rm -f svkbd-$$i 2> /dev/null; \
+		if [ -x $$i ]; \
+		then \
+			rm -f $$i 2> /dev/null; \
+		fi \
 	done; true
 	@rm -f ${OBJ} svkbd-${VERSION}.tar.gz 2> /dev/null; true
 
@@ -38,9 +39,9 @@ dist: clean
 	@mkdir -p svkbd-${VERSION}
 	@cp LICENSE Makefile README config.def.h config.mk \
 		${SRC} svkbd-${VERSION}
-	@for i in ${LAYOUTS}; \
+	@for i in layout.*.h; \
 	do \
-		cp layout.$$i.h svkbd-${VERSION}; \
+		cp $$i svkbd-${VERSION}; \
 	done
 	@tar -cf svkbd-${VERSION}.tar svkbd-${VERSION}
 	@gzip svkbd-${VERSION}.tar
@@ -49,13 +50,13 @@ dist: clean
 install: all
 	@echo installing executable files to ${DESTDIR}${PREFIX}/bin
 	@mkdir -p ${DESTDIR}${PREFIX}/bin
-	@for i in ${LAYOUTS}; \
+	@for i in svkbd-*; \
 	do \
-		if [ -e svkbd-$$i ]; \
+		if [ -x $$i ]; \
 		then \
-			echo CP svkbd-$$i; \
-			cp svkbd-$$i ${DESTDIR}${PREFIX}/bin; \
-			chmod 755 ${DESTDIR}${PREFIX}/bin/svkbd-$$i; \
+			echo CP $$i; \
+			cp $$i ${DESTDIR}${PREFIX}/bin; \
+			chmod 755 ${DESTDIR}${PREFIX}/bin/$$i; \
 		fi \
 	done
 #	@echo installing manual page to ${DESTDIR}${MANPREFIX}/man1
