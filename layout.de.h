@@ -13,6 +13,7 @@ static Key keys[] = {
 	{ "ß?\\", XK_ssharp, 1 },
 	{ "´`¸", XK_dead_acute, 1 },
 	{ "<-", XK_BackSpace, 2 },
+	{ "Entf", XK_Delete, 1},
 	{ 0 }, /* New row */
 	{ "->|", XK_Tab, 1 },
 	{ "qQ@", XK_q, 1 },
@@ -27,7 +28,7 @@ static Key keys[] = {
 	{ "pPþ", XK_p, 1 },
 	{ "üÜ¨", 0xfc, 1 },
 	{ "+*~", XK_plus, 1 },
-	{ "Return", XK_Return, 3 },
+	{ "Enter", XK_Return, 3 },
 	{ 0 }, /* New row */
 	{ 0, XK_Caps_Lock, 2 },
 	{ "aAæ", XK_a, 1 },
