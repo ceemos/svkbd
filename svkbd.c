@@ -63,7 +63,6 @@ static void buttonrelease(XEvent *e);
 static void cleanup(void);
 static void configurenotify(XEvent *e);
 static void countrows();
-static void unmapnotify(XEvent *e);
 static void die(const char *errstr, ...);
 static void drawkeyboard(void);
 static void drawkey(Key *k);
@@ -85,7 +84,6 @@ static void (*handler[LASTEvent]) (XEvent *) = {
 	[ButtonPress] = buttonpress,
 	[ButtonRelease] = buttonrelease,
 	[ConfigureNotify] = configurenotify,
-	[UnmapNotify] = unmapnotify,
 	[Expose] = expose,
 	[LeaveNotify] = leavenotify,
 	[MotionNotify] = motionnotify
@@ -128,7 +126,8 @@ motionnotify(XEvent *e)
 		}
 
 		if(!IsModifierKey(keys[i].keysym) && keys[i].pressed == True) {
-			keys[i].pressed = False;
+			unpress(&keys[i], 0);
+
 			drawkey(&keys[i]);
 		}
 		if(keys[i].highlighted == True) {
@@ -172,8 +171,13 @@ buttonrelease(XEvent *e) {
 			break;
 		}
 	}
-	if((k = findkey(ev->x, ev->y)))
-		unpress(k, mod);
+
+	if(ev->x < 0 || ev->y < 0) {
+		unpress(NULL, mod);
+	} else {
+		if((k = findkey(ev->x, ev->y)))
+			unpress(k, mod);
+	}
 }
 
 void
@@ -272,11 +276,6 @@ drawkey(Key *k) {
 	}
 	XCopyArea(dpy, dc.drawable, win, dc.gc, k->x, k->y, k->w, k->h,
 			k->x, k->y);
-}
-
-void
-unmapnotify(XEvent *e) {
-	running = False;
 }
 
 void
@@ -399,14 +398,15 @@ unpress(Key *k, KeySym mod) {
 			break;
 		}
 	}
-	if(i !=  LENGTH(keys)) {
+	if(i != LENGTH(keys)) {
+		if(pressedmod) {
+			XTestFakeKeyEvent(dpy,
+				XKeysymToKeycode(dpy, pressedmod),
+				False, 0);
+		}
+		pressedmod = 0;
+
 		for(i = 0; i < LENGTH(keys); i++) {
-			if(pressedmod) {
-				XTestFakeKeyEvent(dpy,
-					XKeysymToKeycode(dpy, pressedmod),
-					False, 0);
-			}
-			pressedmod = 0;
 			if(keys[i].pressed) {
 				XTestFakeKeyEvent(dpy,
 					XKeysymToKeycode(dpy,
