@@ -371,6 +371,14 @@ press(Key *k, KeySym mod) {
 					True, 0);
 		}
 		XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, k->keysym), True, 0);
+
+		for(i = 0; i < LENGTH(keys); i++) {
+			if(keys[i].pressed && IsModifierKey(keys[i].keysym)) {
+				XTestFakeKeyEvent(dpy,
+					XKeysymToKeycode(dpy, keys[i].keysym),
+					False, 0);
+			}
+		}
 	}
 	drawkey(k);
 }
