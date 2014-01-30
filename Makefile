@@ -5,7 +5,7 @@ include config.mk
 
 SRC = svkbd.c
 
-all: options svkbd-en
+all: options svkbd-${LAYOUT}
 
 options:
 	@echo svkbd build options:
