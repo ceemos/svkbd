@@ -152,8 +152,12 @@ buttonpress(XEvent *e) {
 			break;
 		}
 	}
-	if((k = findkey(ev->x, ev->y)))
+	if((k = findkey(ev->x, ev->y))) {
 		press(k, mod);
+#ifdef NO_REPEAT
+		unpress(k, mod);
+#endif
+	}
 }
 
 void
